@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Custom Homepage",
+  "version": "1.0.0",
+  "description": "A stylist custom homepage for your browser.",
+  "icons": {
+    "32": "icon32.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "focus.html"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://suggestqueries.google.com/*"
+  ]
+}

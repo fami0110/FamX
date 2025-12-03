@@ -1,0 +1,1 @@
+location = 'index.html';

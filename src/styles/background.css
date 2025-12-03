@@ -1,0 +1,67 @@
+#background {
+    margin: 0;
+    overflow: hidden;
+    background-color: transparent;
+    position: absolute;
+    z-index: 0;
+    
+    background-image:
+        /* Layer 1: Large Grid (200px) - Brightest lines ("crosses") */
+        linear-gradient(
+            to right, 
+            rgba(var(--bg-grid-theme), 0.7) 1px, 
+            transparent 1px
+        ),
+        linear-gradient(
+            to bottom, 
+            rgba(var(--bg-grid-theme), 0.7) 1px, 
+            transparent 1px
+        ),
+
+        /* Layer 2: Dots (at 50px intersections) */
+        radial-gradient(
+            circle, 
+            rgba(var(--bg-grid-theme), 0.4) 1px, 
+            transparent 1px
+        ),
+
+        /* Layer 3: Medium Grid (50px) */
+        linear-gradient(
+            to right, 
+            rgba(var(--bg-grid-theme), 0.3) 1px, 
+            transparent 1px
+        ),
+        linear-gradient(
+            to bottom, 
+            rgba(var(--bg-grid-theme), 0.3) 1px, 
+            transparent 1px
+        ),
+
+        /* Layer 4: Small Grid (10px) - Dimmest lines */
+        linear-gradient(
+            to right, 
+            rgba(var(--bg-grid-theme), 0.1) 1px, 
+            transparent 1px
+        ),
+        linear-gradient(
+            to bottom, 
+            rgba(var(--bg-grid-theme), 0.1) 1px, 
+            transparent 1px
+        );
+
+    --l-size : max(400px, 25vw);
+    --m-size : calc(var(--l-size) / 4);
+    --s-size : calc(var(--m-size) / 5);
+    /* --- Grid Sizing --- */
+    background-size:
+        var(--l-size) var(--l-size), /* Large Grid (Horizontal) */
+        var(--l-size) var(--l-size), /* Large Grid (Vertical) */
+        
+        var(--m-size) var(--m-size),   /* Dots */
+
+        var(--m-size) var(--m-size),   /* Medium Grid (Horizontal) */
+        var(--m-size) var(--m-size),   /* Medium Grid (Vertical) */
+        
+        var(--s-size) var(--s-size),   /* Small Grid (Horizontal) */
+        var(--s-size) var(--s-size);   /* Small Grid (Vertical) */
+}
