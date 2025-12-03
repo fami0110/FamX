@@ -357,7 +357,7 @@ export default function SearchBar() {
                                 <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded">AI</span>
                               </div>
                               <span className="text-neutral-500 text-sm">
-                                "{query.length > 20 ? `${query.replace(/^!/, '').trim().substring(0, 20)}...` : query.trim()}"
+                                "{query.length > 20 ? `${query.replace(/^!/, '').trim().substring(0, 20)}...` : query.replace(/^!/, '').trim()}"
                               </span>
                             </div>
                           )
