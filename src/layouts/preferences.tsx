@@ -101,37 +101,45 @@ export default function Preferences() {
         
         <div className="space-y-6 overflow-y-auto h-full pt-2">
           {/* Pengaturan Tema */}
-          <h3 className="text-lg font-bold mb-0 bg-background/50 p-3">Theme</h3>
+          <h3 className="text-lg font-bold mb-0 bg-background/50 p-3">Appearence</h3>
           
           <div className="space-y-4 p-4 mb-0">
-            <select 
-              value={theme || "default"} 
-              onChange={handleThemeChange}
-              className="w-full p-2 mb-0 border rounded-md bg-card focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              {availableThemes.map(theme => (
-                <option key={theme.key} value={theme.value}>
-                  {theme.key}
-                </option>
-              ))}
-            </select>
+            {/* Themes */}
+            <label className="flex align-middle w-full p-2 border rounded-md bg-card focus:ring-2 focus:ring-accent text-base">
+              <span className="px-3 text-current/50 border-e">Themes</span>
+              <select 
+                value={theme || "default"} 
+                onChange={handleThemeChange}
+                className="flex-1 px-3 bg-card focus:outline-none"
+              >
+                {availableThemes.map(theme => (
+                  <option key={theme.key} value={theme.value}>
+                    {theme.key}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           {/* Pengaturan Search Engine */}
           <h3 className="text-lg font-bold mb-0 bg-background/50 p-3">Search</h3>
           
           <div className="space-y-4 p-4 mb-0">
-            <select 
-              value={searchEngine || "Google"} 
-              onChange={handleSearchEngineChange}
-              className="w-full p-2 border rounded-md bg-card focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              {searchEngines.map(engine => (
-                <option key={engine}>
-                  {engine}
-                </option>
-              ))}
-            </select>
+            {/* Search Engines */}
+            <label className="flex align-middle w-full p-2 border rounded-md bg-card focus:ring-2 focus:ring-accent text-base">
+              <span className="px-3 text-current/50 border-e">Search Engines</span>
+              <select 
+                value={searchEngine || "Google"} 
+                onChange={handleSearchEngineChange}
+                className="flex-1 px-3 bg-card focus:outline-none"
+              >
+                {searchEngines.map(engine => (
+                  <option key={engine}>
+                    {engine}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             {/* Focus Search */}
             <div className="flex items-center justify-between">
