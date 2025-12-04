@@ -154,7 +154,7 @@ export default function SearchBar() {
     if (suggestion.isAI) {   
       if (suggestion.url) {
         // Replace the url template with query
-        window.open(suggestion.url.replace("{}", query.replace(/^!/, '').trim()), "_blank");
+        window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, '').trim())), "_blank");
       } else {
         // Provide user more options for AIs
         setSuggestions([...aiSuggestions]);
