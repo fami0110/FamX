@@ -117,7 +117,7 @@ export default function Background() {
         x, y, outerRadius
       );
   
-      gradient.addColorStop(0, `rgba(${getCssVariableValue("--bg-theme")}, 0)`);
+      gradient.addColorStop(0, `rgba(${getCssVariableValue("--bg-theme")}, 0.3)`);
       gradient.addColorStop(1, `rgba(${getCssVariableValue("--bg-theme")}, 0.9)`);
   
       ctx.fillStyle = gradient;
