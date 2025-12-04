@@ -59,6 +59,8 @@ class Meteor {
 }
 
 export default function Background() {
+  const { backgroundGrid, backgroundStars, backgroundVignette } = useContext(AppContext);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   const mousePos = useRef({ 
@@ -90,35 +92,42 @@ export default function Background() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { x, y } = mousePos.current;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw meteor
-    meteors.current.forEach((meteor, index, arr) => {
-      if (meteor.flow()) {
-        meteor.draw();
-      } else {
-        arr.splice(index, 1);
-      }
-    });
+    if (backgroundStars) {
+      meteors.current.forEach((meteor, index, arr) => {
+        if (meteor.flow()) {
+          meteor.draw();
+        } else {
+          arr.splice(index, 1);
+        }
+      });
+    }
 
     // Draw vignette
-    const innerRadius = 0;
-    const outerRadius = 800;
+    if (backgroundVignette) {
+      const { x, y } = mousePos.current;
+      
+      const innerRadius = 0;
+      const outerRadius = 800;
+  
+      const gradient = ctx.createRadialGradient(
+        x, y, innerRadius,
+        x, y, outerRadius
+      );
+  
+      gradient.addColorStop(0, `rgba(${getCssVariableValue("--bg-theme")}, 0)`);
+      gradient.addColorStop(1, `rgba(${getCssVariableValue("--bg-theme")}, 0.9)`);
+  
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; 
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
-    const gradient = ctx.createRadialGradient(
-      x, y, innerRadius,
-      x, y, outerRadius
-    );
-
-    gradient.addColorStop(0, `rgba(${getCssVariableValue("--bg-theme")}, 0)`);
-    gradient.addColorStop(1, `rgba(${getCssVariableValue("--bg-theme")}, 0.9)`);
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  }, []);
+  }, [backgroundStars, backgroundVignette]);
 
   const animate = useCallback(() => {
     draw();
@@ -135,7 +144,6 @@ export default function Background() {
     const handleResize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      draw();
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -177,7 +185,7 @@ export default function Background() {
   return (
     <div 
       id="background" 
-      className="fixed top-0 left-0 w-screen h-screen -z-10 bg-black"
+      className={`fixed top-0 left-0 w-screen h-screen -z-10 bg-black ${backgroundGrid && "grid"}`}
     >
       <canvas ref={canvasRef} className="block w-full h-full" />
     </div>

@@ -13,6 +13,9 @@ export type PreferencesStruct = {
   showTitle: boolean;
   showSubtitle: boolean;
   openWhenStart: boolean;
+  backgroundGrid: boolean;
+  backgroundStars: boolean;
+  backgroundVignette: boolean;
 }
 
 export const defaultPreferences: PreferencesStruct = {
@@ -25,6 +28,9 @@ export const defaultPreferences: PreferencesStruct = {
   showTitle: true,
   showSubtitle: true,
   openWhenStart: true,
+  backgroundGrid: true,
+  backgroundStars: true,
+  backgroundVignette: true,
 };
 
 export type ShortcutStruct = {

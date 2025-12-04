@@ -24,7 +24,10 @@ export default function App() {
   const [showTitle, setShowTitle] = useState<boolean>(preferences.showTitle);
   const [showSubtitle, setShowSubtitle] = useState<boolean>(preferences.showSubtitle);
   const [openWhenStart, setOpenWhenStart] = useState<boolean>(preferences.openWhenStart);
-  
+  const [backgroundGrid, setBackgroundGrid] = useState<boolean>(preferences.backgroundGrid);
+  const [backgroundStars, setBackgroundStars] = useState<boolean>(preferences.backgroundStars);
+  const [backgroundVignette, setBackgroundVignette] = useState<boolean>(preferences.backgroundVignette);
+
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -42,7 +45,10 @@ export default function App() {
       isPanelOpen, setIsPanelOpen,
       showTitle, setShowTitle,
       showSubtitle, setShowSubtitle,
-      openWhenStart, setOpenWhenStart
+      openWhenStart, setOpenWhenStart,
+      backgroundGrid, setBackgroundGrid,
+      backgroundStars, setBackgroundStars,
+      backgroundVignette, setBackgroundVignette
     }}>
       <Background />
 
