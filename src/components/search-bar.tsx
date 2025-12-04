@@ -169,7 +169,7 @@ export default function SearchBar() {
     }
   }, [query, searchQuery]);
 
-  // Handle keyboard events
+  // Handle window keyboard events
   useEffect(() => {
     if (isFocused) {
       inputRef.current?.focus();
@@ -219,7 +219,9 @@ export default function SearchBar() {
         handleSuggestion(selectedSuggestion);
       } else if (e.key === "Tab" && selectedSuggestionIndex >= 0) {
         e.preventDefault();
-        const selectedSuggestion = suggestions[selectedSuggestionIndex];
+        const selectedSuggestion = suggestions[
+          (selectedSuggestionIndex == -1) ? 0 : selectedSuggestionIndex
+        ];
         if (!selectedSuggestion.isAI) setQuery(selectedSuggestion.text);
       }
 
@@ -320,6 +322,12 @@ export default function SearchBar() {
           `}
           >
             <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+
+            <div className="absolute left-12 text-lg text-muted-foreground/40 pointer-events-none select-none whitespace-nowrap overflow-hidden">
+              {suggestions?.[0]?.text?.startsWith(query)
+                ? suggestions[0].text : ""}
+            </div>
+
             <input
               ref={inputRef}
               type="text"
