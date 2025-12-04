@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useContext } from "react";
+import { useEffect, useRef, useCallback, useContext, useReducer, useMemo } from "react";
 import { Search } from "lucide-react";
 import AppContext from "@/AppContext";
 import "@/styles/search.css";
@@ -94,347 +94,395 @@ const aiSuggestions: Suggestion[] = [
 
 const isQueryLikePrompt = (query: string): boolean => {
   const trimmedQuery = query.trim();
-  const wordCount = trimmedQuery.split(/\s+/).filter(word => word.length > 0).length;
+  const wordCount = trimmedQuery.split(/\s+/).filter(Boolean).length;
   const charCount = trimmedQuery.length;
   
   return wordCount > 2 && charCount > 15;
 };
 
+// --- Reducer ---
+interface State {
+	query: string;
+	isFocused: boolean;
+	suggestions: Suggestion[];
+	selectedSuggestionIndex: number;
+	isLoadingSuggestions: boolean;
+	alert: { show: boolean; message: string };
+}
+
+type Action =
+	| { type: "SET_QUERY"; payload: string }
+	| { type: "SET_IS_FOCUSED"; payload: boolean }
+	| { type: "SET_SUGGESTIONS"; payload: Suggestion[] }
+	| { type: "SET_SELECTED_SUGGESTION_INDEX"; payload: number }
+	| { type: "SET_IS_LOADING_SUGGESTIONS"; payload: boolean }
+	| { type: "SHOW_ALERT"; payload: string }
+	| { type: "HIDE_ALERT" };
+
+const initialState: State = {
+	query: "",
+	isFocused: false,
+	suggestions: [],
+	selectedSuggestionIndex: -1,
+	isLoadingSuggestions: false,
+	alert: { show: false, message: "" },
+};
+
+// Helper Functions: Copy To Clipboard
+async function copyToClipboard(text: string, dispatch: React.Dispatch<Action>) {
+	try {
+		await navigator.clipboard.writeText(text);
+		dispatch({ type: "SHOW_ALERT", payload: "Copied to clipboard" });
+		setTimeout(() => dispatch({ type: "HIDE_ALERT" }), 3000);
+	} catch (err) {
+		console.error("Failed to copy text: ", err);
+	}
+}
+
+// Suggestion Item Components
+interface SuggestionItemProps { 
+  suggestion: Suggestion; 
+  index: number; 
+  selectedIndex: number; 
+  onClick: () => void; 
+  query: string 
+};
+
+function SuggestionItem(
+  { suggestion, index, selectedIndex, onClick, query } : SuggestionItemProps
+) {
+  const isMathResult = /=\s*\d+/.test(suggestion.text) && !suggestion.isAI;
+	const isSelected = index === selectedIndex;
+
+	const content = useMemo(() => {
+		if (suggestion.isAI) {
+			return suggestion.text === "Search AI" ? (
+				<div className="flex items-center gap-2 justify-between">
+					<div className="flex items-center gap-2 text-accent">{suggestion.icon}</div>
+					<div className="grow flex items-center gap-1">
+						<span>{suggestion.text}</span>
+					</div>
+					<span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded">AI</span>
+				</div>
+			) : (
+				<div className="flex items-center gap-2 justify-between">
+					<div className="flex items-center gap-2 text-accent">{suggestion.icon}</div>
+					<div className="grow flex items-center gap-1">
+						<span>{suggestion.text}</span>
+						<span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded">AI</span>
+					</div>
+					<span className="text-neutral-500 text-sm">"{query.length > 20 ? `${query.replace(/^!/, "").trim().substring(0, 20)}...` : query.replace(/^!/, "").trim()}"</span>
+				</div>
+			);
+		}
+		if (isMathResult) {
+			return (
+				<div className="flex items-center gap-2 justify-between">
+					<span className="flex items-center justify-center px-3 py-px bg-accent/20 text-accent text-2xl rounded-sm fw-medium">=</span>
+					<span className="text-accent text-2xl">{suggestion.text.split("=")[1].trim()}</span>
+				</div>
+			);
+		}
+		return (
+			<div className="flex items-center gap-2">
+				<Search className="w-4 h-4 text-muted-foreground" />
+				<span>{suggestion.text}</span>
+			</div>
+		);
+	}, [suggestion, isMathResult, query]);
+
+	return (
+		<div 
+      className={`px-4 py-3 cursor-pointer transition-colors 
+        ${isSelected ? "bg-accent/20 text-accent-foreground" : "hover:bg-accent/10 text-foreground"}
+        ${suggestion.isAI || isMathResult ? "border-b border-accent/10" : ""}
+      `}
+      data-index={index} onClick={onClick}>
+			{content}
+		</div>
+	);
+}
+
 export default function SearchBar() {
   const { searchEngine, openWhenStart } = useContext(AppContext);
 
-  const [query, setQuery] = useState("");
-  const [isFocused, setIsFocused] = useState(openWhenStart);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setAlertMessage(`Copied to clipboard`);
-      setShowAlert(true);
-      
-      setTimeout(() => {
-        setShowAlert(false);
-      }, 3000);
-    } catch (err) {
-      console.error("Failed to copy text: ", err);
-    }
-  };
-
-  const searchQuery = useCallback((query: string) => {
-    const searchEngineUrls: { [key: string]: string } = {
-      "Google": "https://www.google.com/search",
-      "Bing": "https://www.bing.com/search",
-      "DuckDuckGo": "https://duckduckgo.com/",
-      "Yahoo": "https://search.yahoo.com/search",
-      "Brave": "https://search.brave.com/search",
-      "Ecosia": "https://www.ecosia.org/search",
-    };
-
-    if (query.trim()) {
-      const baseUrl = searchEngineUrls[searchEngine] || searchEngineUrls["Google"];    
-      window.open(`${baseUrl}?q=${encodeURIComponent(query.trim())}`, "_self");
-    }
-  }, [searchEngine]);
-
-  const handleFormSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    searchQuery(query);
-  }, [query, searchQuery]);
-
-  const handleSuggestion = useCallback((suggestion: Suggestion) => {
-    if (suggestion.isAI) {   
-      if (suggestion.url) {
-        // Replace the url template with query
-        window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, '').trim())), "_blank");
-      } else {
-        // Provide user more options for AIs
-        setSuggestions([...aiSuggestions]);
+	const [state, dispatch] = useReducer(
+    (state: State, action: Action): State => {
+      switch (action.type) {
+        case "SET_QUERY":
+          return { ...state, query: action.payload };
+        case "SET_IS_FOCUSED":
+          return { ...state, isFocused: action.payload };
+        case "SET_SUGGESTIONS":
+          return { ...state, suggestions: action.payload };
+        case "SET_SELECTED_SUGGESTION_INDEX":
+          return { ...state, selectedSuggestionIndex: action.payload };
+        case "SET_IS_LOADING_SUGGESTIONS":
+          return { ...state, isLoadingSuggestions: action.payload };
+        case "SHOW_ALERT":
+          return { ...state, alert: { show: true, message: action.payload } };
+        case "HIDE_ALERT":
+          return { ...state, alert: { ...state.alert, show: false } };
+        default:
+          return state;
       }
-    } else if ((/=\s*\d+/.test(suggestion.text))) {
-      // If it math, then copy the result to clipboard then update the search bar
-      const mathResult = suggestion.text.replace("= ", '');
-      copyToClipboard(mathResult);
-      setQuery(mathResult)
-    } else {
-      searchQuery(suggestion.text);
-    }
-  }, [query, searchQuery]);
+  }, {
+		...initialState,
+		isFocused: openWhenStart,
+	});
+	const { query, isFocused, suggestions, selectedSuggestionIndex, isLoadingSuggestions, alert } = state;
 
-  // Handle window keyboard events
-  useEffect(() => {
-    if (isFocused) {
-      inputRef.current?.focus();
-    } else {
-      inputRef.current?.blur();
-      setQuery("");
-      setSuggestions([]);
-      setSelectedSuggestionIndex(-1);
-    }
+	const inputRef = useRef<HTMLInputElement>(null);
+	const suggestionsRef = useRef<HTMLDivElement>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.altKey) {
-        // e.preventDefault();
+	const searchQuery = useCallback(
+    (queryString: string) => {
+      const searchEngineUrls: { [key: string]: string } = {
+        Google: "https://www.google.com/search",
+        Bing: "https://www.bing.com/search",
+        DuckDuckGo: "https://duckduckgo.com/",
+        Yahoo: "https://search.yahoo.com/search",
+        Brave: "https://search.brave.com/search",
+        Ecosia: "https://www.ecosia.org/search",
+      };
 
-        if (isFocused) {
-          setIsFocused(false);
-        } else {
-          setIsFocused(true);
-        }
-      } else if (e.key === "Escape") {
-        setIsFocused(false);
+      if (queryString.trim()) {
+        const baseUrl = searchEngineUrls[searchEngine] || searchEngineUrls["Google"];
+        window.open(`${baseUrl}?q=${encodeURIComponent(queryString.trim())}`, "_self");
       }
-    };
+    }, 
+  [searchEngine]);
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isFocused]);
+	const handleSuggestion = useCallback(
+		(suggestion: Suggestion) => {
+			if (suggestion.isAI) {
+				if (suggestion.url) {
+					window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, "").trim())), "_blank");
+				} else {
+					dispatch({ type: "SET_SUGGESTIONS", payload: aiSuggestions });
+				}
+			} else if (/=\s*\d+/.test(suggestion.text)) {
+				const mathResult = suggestion.text.replace("= ", "");
+        
+				copyToClipboard(mathResult, dispatch);
+				dispatch({ type: "SET_QUERY", payload: mathResult });
+			} else {
+				searchQuery(suggestion.text);
+			}
+    }, 
+  [query, searchQuery]);
 
-  // Handle arrow keys for navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isFocused || suggestions.length === 0) return;
+	useEffect(() => {
+		if (isFocused) {
+			inputRef.current?.focus();
+		} else {
+			inputRef.current?.blur();
 
-      let newIndex: number = -1;
+			dispatch({ type: "SET_QUERY", payload: "" });
+			dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+			dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
+		}
 
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        newIndex = selectedSuggestionIndex < suggestions.length - 1 ? selectedSuggestionIndex + 1 : 0;
-        setSelectedSuggestionIndex(newIndex);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        newIndex = selectedSuggestionIndex > 0 ? selectedSuggestionIndex - 1 : suggestions.length - 1;
-        setSelectedSuggestionIndex(newIndex);
-      } else if (e.key === "Enter" && selectedSuggestionIndex >= 0) {
-        e.preventDefault();
-        const selectedSuggestion = suggestions[selectedSuggestionIndex];
-        handleSuggestion(selectedSuggestion);
-      } else if (e.key === "Tab") {
-        e.preventDefault();
-        const selectedSuggestion = suggestions[
-          (selectedSuggestionIndex >= 0) ? selectedSuggestionIndex : 0
+    // Set Global Keydown Event
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.altKey) {
+				dispatch({ type: "SET_IS_FOCUSED", payload: !isFocused });
+			} else if (e.key === "Escape") {
+				dispatch({ type: "SET_IS_FOCUSED", payload: false });
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [isFocused]);
+
+	useEffect(() => {
+    // Keydown When isFocused
+		const handleKeyDown = (e: KeyboardEvent) => {
+
+			if (!isFocused || suggestions.length === 0) return;
+
+			let newIndex = -1;
+
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				newIndex = selectedSuggestionIndex < suggestions.length - 1 ? selectedSuggestionIndex + 1 : 0;
+			} else if (e.key === "ArrowUp") {
+				e.preventDefault();
+				newIndex = selectedSuggestionIndex > 0 ? selectedSuggestionIndex - 1 : suggestions.length - 1;
+			} else if (e.key === "Enter" && selectedSuggestionIndex >= 0) {
+				e.preventDefault();
+				handleSuggestion(suggestions[selectedSuggestionIndex]);
+			} else if (e.key === "Tab") {
+				e.preventDefault();
+				const selected = suggestions[
+          selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0
         ];
-        if (!selectedSuggestion.isAI) setQuery(selectedSuggestion.text);
-      }
+				if (!selected.isAI) dispatch({ type: "SET_QUERY", payload: selected.text });
+			}
 
-      const selectedItem = suggestionsRef.current?.querySelector(`[data-index="${newIndex}"]`) as HTMLElement;
-      if (selectedItem && suggestionsRef.current) {
-        const containerRect = suggestionsRef.current.getBoundingClientRect();
-        const itemRect = selectedItem.getBoundingClientRect();
+			if (newIndex !== -1) {
+				dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: newIndex });
+				const selectedItem = suggestionsRef.current?.querySelector(`[data-index="${newIndex}"]`) as HTMLElement;
 
-        // Check if the item is outside the visible area
-        if (itemRect.bottom > containerRect.bottom) {
-          // Scroll down to show the item
-          selectedItem.scrollIntoView({ block: "end", behavior: "instant" });
-        } else if (itemRect.top < containerRect.top) {
-          // Scroll up to show the item
-          selectedItem.scrollIntoView({ block: "start", behavior: "instant" });
-        }
-      }
-    };
+				if (selectedItem && suggestionsRef.current) {
+					const containerRect = suggestionsRef.current.getBoundingClientRect();
+					const itemRect = selectedItem.getBoundingClientRect();
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isFocused, suggestions, selectedSuggestionIndex, query, handleSuggestion]);
+					if (itemRect.bottom > containerRect.bottom) {
+						selectedItem.scrollIntoView({ block: "end", behavior: "instant" });
+					} else if (itemRect.top < containerRect.top) {
+						selectedItem.scrollIntoView({ block: "start", behavior: "instant" });
+					}
+				}
+			}
+		};
 
-  // Fetch suggestions when query changes
-  useEffect(() => {
-    if (!query.trim()) {
-      setSuggestions([]);
-      setSelectedSuggestionIndex(-1);
-      return;
-    }
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [isFocused, suggestions, selectedSuggestionIndex, query, handleSuggestion]);
 
-    if (abortControllerRef.current) abortControllerRef.current.abort();
+	useEffect(() => {
+		if (!query.trim()) {
+			dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+			dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
+			return;
+		}
 
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
+		abortControllerRef.current?.abort();
 
-    // Debounce the API call
-    const timerId = setTimeout(async () => {
-      setIsLoadingSuggestions(true);
+		abortControllerRef.current = new AbortController();
+		const signal = abortControllerRef.current.signal;
 
-      try {
-        const response = await fetch(
-          `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`, 
-          { signal }
-        );
+		const timerId = setTimeout(async () => {
+      
+			dispatch({ type: "SET_IS_LOADING_SUGGESTIONS", payload: true });
 
-        if (!response.ok) throw new Error("Failed to fetch suggestions");
-        const [ _ , data ] = await response.json();
+			try {
+				const response = await fetch(`https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`, { signal });
+				if (!response.ok) throw new Error("Failed to fetch suggestions");
 
-        if ( _ && Array.isArray(data)) {
-          const formattedSuggestions: Suggestion[] = data
-          .filter((item: string) => {
-            if (/^=/.test(item) && !(/^=\s*\d*$/.test(item))) return false;
-            return true;
-          })
-          .map((suggestion: string) => ({
-            text: suggestion,
-            isAI: false,
-          }));
+				const [ _ , data] = await response.json();
 
-          // Check query for suggestions behavior
-          let tmp: Suggestion[];
-          if (isQueryLikePrompt(query)) {
-            tmp = [
-              {
-                text: "Search AI",
-                isAI: true,
-                icon: "✨"
-              }, 
-              ...formattedSuggestions
-            ];
-          } else if (query.startsWith('!')) {
-            tmp = [...aiSuggestions];
-          } else {
-            tmp = [...formattedSuggestions];
-          }
-          setSuggestions(tmp);
-        }
-      } catch (error) {
-        console.error("Error fetching suggestions:", error);
-        if (query.startsWith('!')) setSuggestions([...aiSuggestions]);
-      } finally {
-        setIsLoadingSuggestions(false);
-      }
-    }, 200);
+				if ( _ && Array.isArray(data)) {
 
-    return () => {
-      clearTimeout(timerId);
-      if (abortControllerRef.current) abortControllerRef.current.abort();
-    };
-  }, [query]);
+					const formatted: Suggestion[] = data
+						.filter((item: string) => !/^=/.test(item) || /^=\s*\d*$/.test(item))
+						.map((suggestion: string) => ({
+							text: suggestion,
+							isAI: false,
+						}));
 
-  return (
-    <>
-      {/* Blur background */}
-      {isFocused && <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-fade-in" onClick={() => setIsFocused(false)}></div>}
+					let newSuggestions: Suggestion[];
 
-      <form onSubmit={handleFormSearch} className={isFocused ? "fixed top-[20vh] left-1/2 w-full max-w-2xl z-50 animate-zoom-in" : "relative w-full"}>
-        <div className="relative">
-          <div
-            className={`relative flex items-center gap-3 px-4 py-3 bg-card border rounded-lg transition-all duration-200
+					if (isQueryLikePrompt(query)) {
+						newSuggestions = [{ 
+              text: "Search AI", 
+              isAI: true, 
+              icon: "✨" 
+            }, ...formatted];
+            
+					} else if (query.startsWith("!")) {
+						newSuggestions = [...aiSuggestions];
+					} else {
+						newSuggestions = [...formatted];
+					}
+					dispatch({ type: "SET_SUGGESTIONS", payload: newSuggestions });
+				}
+			} catch (error) {
+				console.error("Error fetching suggestions:", error);
+				if (query.startsWith("!")) dispatch({ type: "SET_SUGGESTIONS", payload: aiSuggestions });
+			} finally {
+				dispatch({ type: "SET_IS_LOADING_SUGGESTIONS", payload: false });
+			}
+		}, 200);
+
+		return () => {
+			clearTimeout(timerId);
+			abortControllerRef.current?.abort();
+		};
+	}, [query]);
+
+	const placeholderText = useMemo(() => {
+		const text = suggestions[
+      selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0
+    ]?.text;
+		return text?.startsWith(query) ? text : "";
+	}, [suggestions, selectedSuggestionIndex, query]);
+
+	return (
+		<>
+			{isFocused && 
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-fade-in" 
+          onClick={() => dispatch({ type: "SET_IS_FOCUSED", payload: false })}>
+        </div>}
+
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					searchQuery(query);
+				}}
+				className={isFocused ? "fixed top-[20vh] left-1/2 w-full max-w-2xl z-50 animate-zoom-in" : "relative w-full"}
+			>
+				<div className="relative">
+					<div
+						className={`relative flex items-center gap-3 px-4 py-3 bg-card border rounded-lg transition-all duration-200
             ${isFocused ? "border-accent/50 shadow-2xl shadow-accent/20" : "group-hover:border-accent/50"}
-          `}
-          >
-            <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+          `}>
+            
+						<Search className="w-5 h-5 text-muted-foreground shrink-0" />
 
-            <div className="absolute left-12 text-lg text-muted-foreground/60 pointer-events-none select-none whitespace-nowrap overflow-hidden">
-              {(() => {
-                const text = suggestions[
-                  (selectedSuggestionIndex >= 0) ? selectedSuggestionIndex : 0
-                ]?.text;
-                return text?.startsWith(query) ? text : ""
-              })()}
+						<div className="absolute left-12 text-lg text-muted-foreground/60 pointer-events-none select-none whitespace-nowrap overflow-hidden">
+              {placeholderText}
             </div>
 
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              placeholder="Search the web..."
-              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-lg"
-              tabIndex={isFocused ? 0 : -1}
-            />
-            <kbd
-              className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border transition-colors
-              ${isFocused ? "text-accent-foreground bg-accent/20 border-accent/30" : "text-muted-foreground bg-muted border-border"}
-            `}
-            >
-              {isFocused ? (
-                <span>esc</span>
-              ) : (
-                <>
-                  <span>⌘</span>
-                  <span>Alt</span>
-                </>
-              )}
-            </kbd>
-          </div>
+						<input
+							ref={inputRef}
+							type="text"
+							value={query}
+							onChange={(e) => dispatch({ type: "SET_QUERY", payload: e.target.value })}
+							onFocus={() => dispatch({ type: "SET_IS_FOCUSED", payload: true })}
+							placeholder="Search the web..."
+							className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-lg"
+							tabIndex={isFocused ? 0 : -1}
+						/>
 
-          {/* Suggestions dropdown */}
-          {isFocused && suggestions.length > 0 && (
-            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-card border border-accent/20 rounded-lg shadow-xl z-50 overflow-auto max-h-[50vh] text-base">
-              {isLoadingSuggestions && 
-                <div className="px-4 py-3 text-muted-foreground text-sm">Loading suggestions...</div>
-              }
-              {!isLoadingSuggestions &&
-                suggestions.map((suggestion, index) => {
-                  const isMathResult: boolean = (/=\s*\d+/.test(suggestion.text) && !suggestion.isAI);
+						<kbd className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border transition-colors
+              ${(isFocused) ? "text-accent-foreground bg-accent/20 border-accent/30" : "text-muted-foreground bg-muted border-border"}`}>
+							{isFocused ? (
+								<span>esc</span>
+							) : (<>
+                <span>⌘</span>
+                <span>Alt</span>
+              </>)}
+						</kbd>
+					</div>
 
-                  return (
-                    <div
-                      key={index}
-                      data-index={index}
-                      className={`px-4 py-3 cursor-pointer transition-colors 
-                        ${index === selectedSuggestionIndex ? "bg-accent/20 text-accent-foreground" : "hover:bg-accent/10 text-foreground"}
-                        ${suggestion.isAI || isMathResult ? "border-b border-accent/10" : ""}
-                      `}
-                      onClick={() => {handleSuggestion(suggestion)}}
-                    >
-                      {suggestion.isAI ? (
-                        suggestion.text === "Search AI" ?
-                          (
-                            <div className="flex items-center gap-2 justify-between">
-                              <div className="flex items-center gap-2 text-accent">{suggestion.icon}</div>
-                              <div className="grow flex items-center gap-1">
-                                <span>{suggestion.text}</span>
-                              </div>
-                              <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded">AI</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 justify-between">
-                              <div className="flex items-center gap-2 text-accent">{suggestion.icon}</div>
-                              <div className="grow flex items-center gap-1">
-                                <span>{suggestion.text}</span>
-                                <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded">AI</span>
-                              </div>
-                              <span className="text-neutral-500 text-sm">
-                                "{query.length > 20 ? `${query.replace(/^!/, '').trim().substring(0, 20)}...` : query.replace(/^!/, '').trim()}"
-                              </span>
-                            </div>
-                          )
-                      ) : (
-                        !isMathResult ?
-                          (
-                            <div className="flex items-center gap-2">
-                              <Search className="w-4 h-4 text-muted-foreground" />
-                              <span>{suggestion.text}</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 justify-between">
-                              <span className="flex items-center justify-center px-3 py-px bg-accent/20 text-accent text-2xl rounded-sm fw-medium">
-                                =
-                              </span>
-                              <span className="text-accent text-2xl">{suggestion.text.split("=")[1].trim()}</span>
-                            </div>
-                          )
-                      )}
-                    </div>
-                  )}
-                )}
-            </div>
-          )}
-        </div>
-      </form>
+					{isFocused && suggestions.length > 0 && (
+						<div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-card border border-accent/20 rounded-lg shadow-xl z-50 overflow-auto max-h-[50vh] text-base">
+							{isLoadingSuggestions && <div className="px-4 py-3 text-muted-foreground text-sm">Loading suggestions...</div>}
+							{!isLoadingSuggestions &&
+								suggestions.map((suggestion, index) => (
+									<SuggestionItem
+										key={index}
+										suggestion={suggestion}
+										index={index}
+										selectedIndex={selectedSuggestionIndex}
+										onClick={() => handleSuggestion(suggestion)}
+										query={query}
+									/>
+								))}
+						</div>
+					)}
+				</div>
+			</form>
 
-      {/* Alert Notification */}
-      {showAlert && (
+			{alert.show && 
         <div className="fixed bottom-4 right-4 bg-accent text-accent-foreground px-4 py-2 rounded-md shadow-lg z-50 animate-fade-in">
-          {alertMessage}
+          {alert.message}
         </div>
-      )}
-    </>
-  );
+      }
+		</>
+	);
 }
