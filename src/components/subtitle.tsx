@@ -20,7 +20,7 @@ export default function Subtitle() {
     }, []);
 
     return (
-        <h1 className="relative text-4xl font-normal tracking-tight text-balance drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+        <h1 className="relative text-4xl font-normal tracking-tight text-balance mt-3 mb-4 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
             <span ref={el} />
         </h1>
     )

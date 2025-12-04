@@ -12,7 +12,7 @@ export default function Main() {
 
     return (
         <div className="w-full flex flex-col items-center justify-center flex-1">
-            <div className="mb-12 text-center space-y-2">
+            <div className="mb-8 text-center space-y-2">
                 {showTitle && (<Greetings />)}
                 {showSubtitle && (<Subtitle />)}
             </div>
