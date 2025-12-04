@@ -269,6 +269,7 @@ export default function SearchBar() {
 				dispatch({ type: "SET_QUERY", payload: mathResult });
 			} else {
 				searchQuery(suggestion.text);
+				dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
 			}
     }, 
   [query, searchQuery]);
@@ -317,9 +318,12 @@ export default function SearchBar() {
 			} else if (e.key === "Tab" || e.key === "ArrowRight") {
 				e.preventDefault();
 				const selected = suggestions[
-          selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0
-        ];
-				if (!selected.isAI) dispatch({ type: "SET_QUERY", payload: selected.text });
+					selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0
+				];
+				if (!selected.isAI) {
+					dispatch({ type: "SET_QUERY", payload: selected.text })
+					dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
+				};
 			}
 
 			if (newIndex !== -1) {
