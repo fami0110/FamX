@@ -217,10 +217,10 @@ export default function SearchBar() {
         e.preventDefault();
         const selectedSuggestion = suggestions[selectedSuggestionIndex];
         handleSuggestion(selectedSuggestion);
-      } else if (e.key === "Tab" && selectedSuggestionIndex >= 0) {
+      } else if (e.key === "Tab") {
         e.preventDefault();
         const selectedSuggestion = suggestions[
-          (selectedSuggestionIndex == -1) ? 0 : selectedSuggestionIndex
+          (selectedSuggestionIndex >= 0) ? selectedSuggestionIndex : 0
         ];
         if (!selectedSuggestion.isAI) setQuery(selectedSuggestion.text);
       }
@@ -269,10 +269,15 @@ export default function SearchBar() {
         );
 
         if (!response.ok) throw new Error("Failed to fetch suggestions");
-        const data = await response.json();
+        const [ _ , data ] = await response.json();
 
-        if (data && data[1] && Array.isArray(data[1])) {
-          const formattedSuggestions: Suggestion[] = data[1].map((suggestion: string) => ({
+        if ( _ && Array.isArray(data)) {
+          const formattedSuggestions: Suggestion[] = data
+          .filter((item: string) => {
+            if (/^=/.test(item) && !(/^=\s*\d*$/.test(item))) return false;
+            return true;
+          })
+          .map((suggestion: string) => ({
             text: suggestion,
             isAI: false,
           }));
@@ -323,9 +328,13 @@ export default function SearchBar() {
           >
             <Search className="w-5 h-5 text-muted-foreground shrink-0" />
 
-            <div className="absolute left-12 text-lg text-muted-foreground/40 pointer-events-none select-none whitespace-nowrap overflow-hidden">
-              {suggestions?.[0]?.text?.startsWith(query)
-                ? suggestions[0].text : ""}
+            <div className="absolute left-12 text-lg text-muted-foreground/60 pointer-events-none select-none whitespace-nowrap overflow-hidden">
+              {(() => {
+                const text = suggestions[
+                  (selectedSuggestionIndex >= 0) ? selectedSuggestionIndex : 0
+                ]?.text;
+                return text?.startsWith(query) ? text : ""
+              })()}
             </div>
 
             <input
@@ -356,8 +365,10 @@ export default function SearchBar() {
 
           {/* Suggestions dropdown */}
           {isFocused && suggestions.length > 0 && (
-            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-card border border-accent/20 rounded-lg shadow-xl z-50 overflow-auto max-h-[50vh]">
-              {isLoadingSuggestions && <div className="px-4 py-3 text-muted-foreground text-sm">Loading suggestions...</div>}
+            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-card border border-accent/20 rounded-lg shadow-xl z-50 overflow-auto max-h-[50vh] text-base">
+              {isLoadingSuggestions && 
+                <div className="px-4 py-3 text-muted-foreground text-sm">Loading suggestions...</div>
+              }
               {!isLoadingSuggestions &&
                 suggestions.map((suggestion, index) => {
                   const isMathResult: boolean = (/=\s*\d+/.test(suggestion.text) && !suggestion.isAI);
@@ -406,7 +417,7 @@ export default function SearchBar() {
                               <span className="flex items-center justify-center px-3 py-px bg-accent/20 text-accent text-2xl rounded-sm fw-medium">
                                 =
                               </span>
-                              <span className="text-accent text-2xl">{suggestion.text.split(" ")[1]}</span>
+                              <span className="text-accent text-2xl">{suggestion.text.split("=")[1].trim()}</span>
                             </div>
                           )
                       )}
