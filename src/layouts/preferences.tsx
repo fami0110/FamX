@@ -136,7 +136,7 @@ export default function Preferences() {
               <select 
                 value={theme || "default"} 
                 onChange={handleThemeChange}
-                className="flex-1 px-3 bg-card focus:outline-none"
+                className="flex-1 px-3 bg-card focus:outline-none cursor-pointer"
               >
                 {availableThemes.map(theme => (
                   <option key={theme.key} value={theme.value}>
@@ -182,7 +182,7 @@ export default function Preferences() {
               <select 
                 value={searchEngine || "Google"} 
                 onChange={handleSearchEngineChange}
-                className="flex-1 px-3 bg-card focus:outline-none"
+                className="flex-1 px-3 bg-card focus:outline-none cursor-pointer"
               >
                 {searchEngines.map(engine => (
                   <option key={engine}>
