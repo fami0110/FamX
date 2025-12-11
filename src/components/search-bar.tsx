@@ -315,7 +315,7 @@ export default function SearchBar() {
 			} else if (e.key === "Enter" && selectedSuggestionIndex >= 0) {
 				e.preventDefault();
 				handleSuggestion(suggestions[selectedSuggestionIndex]);
-			} else if (e.key === "Tab" || e.key === "ArrowRight") {
+			} else if (e.key === "Tab") {
 				e.preventDefault();
 				const selected = suggestions[
 					selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0
