@@ -117,13 +117,10 @@ export default function Background() {
         x, y, outerRadius
       );
   
-      gradient.addColorStop(0, `rgba(${getCssVariableValue("--bg-theme")}, 0.3)`);
-      gradient.addColorStop(1, `rgba(${getCssVariableValue("--bg-theme")}, 0.9)`);
+      gradient.addColorStop(0, `rgba(${getCssVariableValue("--bg-theme")}, 0)`);
+      gradient.addColorStop(1, `rgba(${getCssVariableValue("--bg-theme")}, 0.8)`);
   
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; 
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
