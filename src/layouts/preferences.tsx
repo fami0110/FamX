@@ -124,7 +124,7 @@ export default function Preferences() {
           </button>
         </div>
         
-        <div className="space-y-6 overflow-y-auto h-full pt-2">
+        <div className="space-y-6 overflow-y-auto pt-2" style={{ maxHeight: "calc(100vh - 4.5rem)" }}>
 
           {/* Pengaturan Tema */}
           <h3 className="text-lg font-bold mb-0 bg-background/50 p-3">Appearence</h3>

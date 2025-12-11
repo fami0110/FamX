@@ -258,7 +258,7 @@ export default function SearchBar() {
 		(suggestion: Suggestion) => {
 			if (suggestion.isAI) {
 				if (suggestion.url) {
-					window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, "").trim())), "_blank");
+					window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, "").trim())));
 				} else {
 					dispatch({ type: "SET_SUGGESTIONS", payload: aiSuggestions });
 				}
@@ -279,8 +279,7 @@ export default function SearchBar() {
 			inputRef.current?.focus();
 		} else {
 			inputRef.current?.blur();
-
-			dispatch({ type: "SET_QUERY", payload: "" });
+			
 			dispatch({ type: "SET_SUGGESTIONS", payload: [] });
 			dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
 		}
@@ -380,15 +379,14 @@ export default function SearchBar() {
 
 					let newSuggestions: Suggestion[];
 
-					if (isQueryLikePrompt(query)) {
-						newSuggestions = [{ 
-              text: "Search AI", 
-              isAI: true, 
-              icon: "✨" 
-            }, ...formatted];
-            
-					} else if (query.startsWith("!")) {
+					if (query.startsWith("!")) {
 						newSuggestions = [...aiSuggestions];
+					} else if (isQueryLikePrompt(query)) {
+						newSuggestions = [{ 
+							text: "Search AI", 
+							isAI: true, 
+							icon: "✨" 
+						}, ...formatted];
 					} else {
 						newSuggestions = [...formatted];
 					}
@@ -410,17 +408,19 @@ export default function SearchBar() {
 
 	const placeholderText = useMemo(() => {
 		const text = suggestions[
-      selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0
-    ]?.text;
+			(selectedSuggestionIndex >= 0) ? selectedSuggestionIndex : 0
+		]?.text;
+
 		return text?.startsWith(query) ? text : "";
 	}, [suggestions, selectedSuggestionIndex, query]);
 
 	return (
 		<>
-			{isFocused && 
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-fade-in" 
-          onClick={() => dispatch({ type: "SET_IS_FOCUSED", payload: false })}>
-        </div>}
+			{isFocused && (
+				<div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-fade-in" 
+					onClick={() => dispatch({ type: "SET_IS_FOCUSED", payload: false })}>
+				</div>
+			)}
 
 			<form
 				onSubmit={(e) => {
@@ -430,16 +430,14 @@ export default function SearchBar() {
 				className={isFocused ? "fixed top-[20vh] left-1/2 w-full max-w-2xl z-50 animate-zoom-in" : "relative w-full"}
 			>
 				<div className="relative">
-					<div
-						className={`relative flex items-center gap-3 px-4 py-3 bg-card border rounded-lg transition-all duration-200
-            ${isFocused ? "border-accent/50 shadow-2xl shadow-accent/20" : "group-hover:border-accent/50"}
-          `}>
+					<div className={`relative flex items-center gap-3 px-4 py-3 bg-card border rounded-lg transition-all duration-200
+						${isFocused ? "border-accent/50 shadow-2xl shadow-accent/20" : "group-hover:border-accent/50"}`}>
             
 						<Search className="w-5 h-5 text-muted-foreground shrink-0" />
 
 						<div className="absolute left-12 text-lg text-muted-foreground/60 pointer-events-none select-none whitespace-nowrap overflow-hidden">
-              {placeholderText}
-            </div>
+							{placeholderText}
+						</div>
 
 						<input
 							ref={inputRef}
@@ -453,13 +451,13 @@ export default function SearchBar() {
 						/>
 
 						<kbd className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border transition-colors
-              ${(isFocused) ? "text-accent-foreground bg-accent/20 border-accent/30" : "text-muted-foreground bg-muted border-border"}`}>
-							{isFocused ? (
-								<span>esc</span>
-							) : (<>
-                <span>⌘</span>
-                <span>Alt</span>
-              </>)}
+							${(isFocused) ? "text-accent-foreground bg-accent/20 border-accent/30" : "text-muted-foreground bg-muted border-border"}`}>
+								{isFocused ? (
+									<span>esc</span>
+								) : (<>
+									<span>⌘</span>
+									<span>Alt</span>
+								</>)}
 						</kbd>
 					</div>
 
@@ -482,11 +480,11 @@ export default function SearchBar() {
 				</div>
 			</form>
 
-			{alert.show && 
-        <div className="fixed bottom-4 right-4 bg-accent text-accent-foreground px-4 py-2 rounded-md shadow-lg z-50 animate-fade-in">
-          {alert.message}
-        </div>
-      }
+			{alert.show && (
+				<div className="fixed bottom-4 right-4 bg-accent text-accent-foreground px-4 py-2 rounded-md shadow-lg z-50 animate-fade-in">
+					{alert.message}
+				</div>
+			)}
 		</>
 	);
 }
