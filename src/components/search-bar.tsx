@@ -258,7 +258,7 @@ export default function SearchBar() {
 		(suggestion: Suggestion) => {
 			if (suggestion.isAI) {
 				if (suggestion.url) {
-					window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, "").trim())));
+					window.open(suggestion.url.replace("{}", encodeURIComponent(query.replace(/^!/, "").trim())), "_self");
 				} else {
 					dispatch({ type: "SET_SUGGESTIONS", payload: aiSuggestions });
 				}
