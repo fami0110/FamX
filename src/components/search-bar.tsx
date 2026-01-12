@@ -319,9 +319,12 @@ export default function SearchBar() {
 	useEffect(() => {
 		// Keydown When isFocused
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Tab") e.preventDefault();
 
-			if (!isFocused || suggestions.length === 0) return;
+            if (!isFocused) return;
+            
+			if (e.key === "Tab") e.preventDefault();
+            
+            if (suggestions.length === 0) return;
 
 			let newIndex = -1;
 
