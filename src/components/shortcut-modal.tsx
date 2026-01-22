@@ -44,7 +44,7 @@ export default function ShortcutModal({ isOpen, onClose, onSubmit, initialData }
 				setIsFetchingFavicon(true);
 				setFaviconError(false);
 				try {
-					const faviconUrl = await getFaviconUrl(url);
+					const faviconUrl = getFaviconUrl(url);
 					
 					setIcon(faviconUrl);
 				} catch (error) {

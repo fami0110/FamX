@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useContext, useReducer, useMemo } from "react";
-import { Search } from "lucide-react";
+import { Search, History } from "lucide-react";
+import { getFaviconUrl } from "@/lib/utils";
 import AppContext from "@/AppContext";
 import "@/styles/search.css";
 
@@ -15,7 +16,7 @@ const aiSuggestions: Suggestion[] = [
 		name: "Gemini",
 		url: "https://www.google.com/search?udm=50&source=searchlabs&q={}",
 		icon: (
-            <svg width="2rem" height="2rem" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30">
+            <svg width="2rem" height="2rem" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25">
                 <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"></path>
                 <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#lobe-icons-gemini-fill-0)"></path>
                 <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#lobe-icons-gemini-fill-1)"></path>
@@ -165,13 +166,14 @@ interface SuggestionItemProps {
 
 function SuggestionItem({ suggestion, index, selectedIndex, onClick, query }: SuggestionItemProps) {
 	const isMathResult = /=\s*\d+/.test(suggestion.text) && !suggestion.isAI;
+	const isUrlHistory = suggestion.url && !suggestion.isAI;
 	const isSelected = index === selectedIndex;
 
 	const content = useMemo(() => {
 		if (suggestion.isAI) {
 			return suggestion.text === "Search AI" ? (
 				<div className="flex items-center gap-2 justify-between">
-					<div className="flex items-center gap-2 text-accent">{suggestion.icon}</div>
+					<span>{suggestion.icon}</span>
 					<div className="grow flex items-center gap-1">
 						<span>{suggestion.text}</span>
 					</div>
@@ -179,7 +181,7 @@ function SuggestionItem({ suggestion, index, selectedIndex, onClick, query }: Su
 				</div>
 			) : (
 				<div className="flex items-center gap-2 justify-between">
-					<div className="flex items-center gap-2 text-accent">{suggestion.icon}</div>
+					<span>{suggestion.icon}</span>
 					<div className="grow flex items-center gap-1">
 						<span>{suggestion.text}</span>
 						<span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded">AI</span>
@@ -196,20 +198,34 @@ function SuggestionItem({ suggestion, index, selectedIndex, onClick, query }: Su
 				</div>
 			);
 		}
+		if (isUrlHistory && suggestion.url) {
+			return (
+				<div className="flex items-center gap-2 justify-between">
+					<History className="w-4 h-4 text-orange-500" />
+					<div className="flex-1">
+						<h3>{(suggestion.text.length > 56) ? `${suggestion.text.replace(/^!/, "").trim().substring(0, 56)}...` : suggestion.text}</h3>
+						<p className="text-primary text-xs">{(suggestion.url.length > 75) ? `${suggestion.url?.replace(/^!/, "").trim().substring(0, 75)}...` : suggestion.url}</p>
+					</div>
+					<span className="flex items-center justify-center w-8 h-8 bg-accent/20 text-accent text-2xl rounded-sm fw-medium">
+						<img src={getFaviconUrl(suggestion.url)} className="max-w-[60%] rounded-xl" alt="favicon" />
+					</span>
+				</div>
+			);
+		}
 		return (
 			<div className="flex items-center gap-2">
 				<Search className="w-4 h-4 text-muted-foreground" />
 				<span>{suggestion.text}</span>
 			</div>
 		);
-	}, [suggestion, isMathResult, query]);
+	}, [suggestion, isMathResult, isUrlHistory, query]);
 
 	return (
 		<div
 			className={`px-4 py-3 cursor-pointer transition-colors 
-        ${isSelected ? "bg-accent/20 text-accent-foreground" : "hover:bg-accent/10 text-foreground"}
-        ${suggestion.isAI || isMathResult ? "border-b border-accent/10" : ""}
-      `}
+				${isSelected ? "bg-accent/20 text-accent-foreground" : "hover:bg-accent/10 text-foreground"}
+				${(suggestion.isAI || isMathResult || isUrlHistory) ? "border-b border-accent/10" : ""}
+			`}
 			data-index={index}
 			onClick={onClick}
 		>
@@ -286,7 +302,11 @@ export default function SearchBar() {
 				copyToClipboard(mathResult, dispatch);
 				dispatch({ type: "SET_QUERY", payload: mathResult });
 			} else {
-				searchQuery(suggestion.text);
+				if (suggestion.url) {
+					window.open(suggestion.url, "_self");
+				} else {
+					searchQuery(suggestion.text);
+				}
 				dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
 			}
 		},
@@ -342,7 +362,8 @@ export default function SearchBar() {
 				e.preventDefault();
 				handleSuggestion(suggestions[selectedSuggestionIndex]);
 			} else if (e.key === "Tab") {
-				const selected = suggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0];
+				const filteredSuggestions = suggestions.filter(s => !(s.url && !s.isAI) && s.text !== "Search AI");
+				const selected = filteredSuggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0];
 				if (!selected.isAI) {
 					dispatch({ type: "SET_QUERY", payload: selected.text });
 					dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
@@ -386,38 +407,55 @@ export default function SearchBar() {
 			dispatch({ type: "SET_IS_LOADING_SUGGESTIONS", payload: true });
 
 			try {
-				const response = await fetch(`https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`, { signal });
-				if (!response.ok) throw new Error("Failed to fetch suggestions");
 
-				const [ _ , data] = await response.json();
+				const historyPromise = new Promise<chrome.history.HistoryItem[]>((resolve) => {
+					const isMathExpression = /[+\-*/^]/.test(query) && !/[a-zA-Z]/.test(query);
 
-				if ( _ && Array.isArray(data)) {
-
-					const formatted: Suggestion[] = data
-						.filter((item: string) => !/^=/.test(item) || /^=\s*\d*$/.test(item))
-						.map((suggestion: string) => ({
-							text: suggestion,
-							isAI: false,
-						}));
-
-					let newSuggestions: Suggestion[];
-
-					if (query.startsWith("!")) {
-						newSuggestions = [...aiSuggestions];
-					} else if (isQueryLikePrompt(query)) {
-						newSuggestions = [
-							{
-								text: "Search AI",
-								isAI: true,
-								icon: "✨",
-							},
-							...formatted,
-						];
+					if (typeof chrome !== "undefined" && chrome.history && !isMathExpression) {
+						chrome.history.search({ 
+							text: query, 
+							maxResults: 3,
+							startTime: 0 
+						}, (results) => resolve(results));
 					} else {
-						newSuggestions = [...formatted];
+						resolve([]);
 					}
-					dispatch({ type: "SET_SUGGESTIONS", payload: newSuggestions });
+				});
+
+				const googlePromise = fetch(
+					`https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`, 
+					{ signal }
+				).then(res => res.ok ? res.json() : [null, []]);
+
+				const [historyResults, googleData] = await Promise.all([historyPromise, googlePromise]);				
+
+				const historySuggestions: Suggestion[] = historyResults.map(item => ({
+					text: item.title || item.url || "Unknown Page",
+					isAI: false,
+					url: item.url
+				}));
+
+				const rawGoogleSuggestions = Array.isArray(googleData) && googleData[1] ? googleData[1] : [];
+
+				const googleSuggestions: Suggestion[] = rawGoogleSuggestions
+					.filter((item: string) => !/^=/.test(item) || /^=\s*\d*$/.test(item))
+					.slice(0, 6)
+					.map((suggestion: string) => ({
+						text: suggestion,
+						isAI: false,
+					}));
+
+				let newSuggestions: Suggestion[];
+
+				if (query.startsWith("!")) {
+					newSuggestions = [...aiSuggestions];
+				} else if (isQueryLikePrompt(query)) {
+					newSuggestions = [{ text: "Search AI", isAI: true, icon: "✨" }, ...googleSuggestions];
+				} else {
+					newSuggestions = [...historySuggestions, ...googleSuggestions];
 				}
+
+				dispatch({ type: "SET_SUGGESTIONS", payload: newSuggestions });
 			} catch (error) {
 				console.error("Error fetching suggestions:", error);
 				if (query.startsWith("!")) dispatch({ type: "SET_SUGGESTIONS", payload: aiSuggestions });
@@ -433,7 +471,8 @@ export default function SearchBar() {
 	}, [query]);
 
 	const placeholderText = useMemo(() => {
-		const text = suggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0]?.text;
+		const filteredSuggestions = suggestions.filter(s => !(s.url && !s.isAI) && s.text !== "Search AI");
+		const text = filteredSuggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0]?.text;
 
 		return text?.startsWith(query) ? text : "";
 	}, [suggestions, selectedSuggestionIndex, query]);

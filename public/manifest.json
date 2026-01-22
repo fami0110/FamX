@@ -10,7 +10,8 @@
     "newtab": "focus.html"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "history"
   ],
   "host_permissions": [
     "https://suggestqueries.google.com/*"

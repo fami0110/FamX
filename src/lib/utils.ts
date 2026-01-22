@@ -73,7 +73,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export async function getFaviconUrl(urlString: string): Promise<string> {
+export function getFaviconUrl(urlString: string): string {
   try {
     const url = new URL(urlString);
     const domain = url.hostname;
