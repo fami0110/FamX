@@ -109,12 +109,10 @@ export default function Apps() {
 				}}
 			/>
 
-			{/* 4. The Inner Content Container (The actual card overlay) */}
-			<div className="relative z-10 bg-card/95 backdrop-blur-xl rounded-xl h-full w-full max-h-[480px] overflow-y-auto flex flex-col gap-y-3 py-5 px-4 shadow-2xl shadow-black/50">
-				{/* --- Your existing map logic goes here --- */}
+			<div className="relative z-10 bg-card/95 backdrop-blur-xl rounded-xl h-full w-full max-h-[500px] overflow-y-auto flex flex-col gap-y-3 py-5 px-4 shadow-2xl shadow-black/50">
 				{appCategories.map((category, catIndex) => (
 					<div key={category.title}>
-						<h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 px-1">
+						<h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-3 px-1">
 							{category.title}
 						</h3>
 						<div className="grid grid-cols-3 gap-2">
@@ -123,7 +121,7 @@ export default function Apps() {
 									<div className="icon w-10 h-10 flex items-center justify-center rounded-full overflow-hidden transition-all group-hover:ring-2 ring-accent/50 ring-offset-4 ring-offset-card">
 										{app.icon}
 									</div>
-									<span className="text-sm text-muted-foreground group-hover:text-foreground font-medium text-center line-clamp-1">
+									<span className={cn("text-sm text-muted-foreground group-hover:text-foreground font-medium text-center line-clamp-1 group-hover:line-clamp-2")}>
 										{app.name}
 									</span>
 								</a>

@@ -10,6 +10,7 @@ export default function DropdownApps() {
         <button
 			onMouseDown={(e) => e.stopPropagation()}
 			onClick={() => {setIsDropdownAppsOpen(!isDropdownAppsOpen)}}
+            title="Google Apps"
             className={cn(
 				"group p-3 rounded-full transition-all duration-300 cursor-pointer text-base", 
 				(isDropdownAppsOpen ? "bg-accent/20 text-accent" : "hover:bg-accent/10 hover:text-foreground")
