@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Background from "@/layouts/background";
 import Header from "@/layouts/header";
 import Main from "@/layouts/main";
 import Footer from "@/layouts/footer";
+import Apps from "@/layouts/apps";
 import Preferences from "@/layouts/preferences";
 import AppContext from "@/AppContext";
 import type { PreferencesStruct } from "@/lib/utils";
@@ -29,10 +30,7 @@ export default function App() {
   const [backgroundVignette, setBackgroundVignette] = useState<boolean>(preferences.backgroundVignette);
 
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    
-  }, []);
+  const [isDropdownAppsOpen, setIsDropdownAppsOpen] = useState<boolean>(false);
 
   return (
     <AppContext.Provider value={{ 
@@ -48,7 +46,8 @@ export default function App() {
       openWhenStart, setOpenWhenStart,
       backgroundGrid, setBackgroundGrid,
       backgroundStars, setBackgroundStars,
-      backgroundVignette, setBackgroundVignette
+      backgroundVignette, setBackgroundVignette,
+      isDropdownAppsOpen, setIsDropdownAppsOpen
     }}>
       <Background />
 
@@ -56,6 +55,7 @@ export default function App() {
         <Header />
         <Main />
         <Footer />
+        <Apps />
         <Preferences />
       </main>
     </AppContext.Provider>

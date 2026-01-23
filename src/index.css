@@ -304,3 +304,35 @@ body.caffeine {
   scrollbar-width: thin;
   font-family: 'Consolas', Courier, monospace;
 }
+
+/* Dropdown Apps */
+
+@keyframes menuOpen {
+  0% { 
+    opacity: 0; 
+    transform: translate(1rem, -3rem) scale(0.8); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translate(0, 0) scale(1); 
+  }
+}
+
+@keyframes border-spin {
+  from { transform: scale(3) rotate(0deg); }
+  to { transform: scale(3) rotate(360deg); }
+}
+
+.apps {
+  display: none;
+
+  &.apps-active {
+    display: flex;
+    animation: menuOpen 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  .icon > * {
+    max-height: 80%;
+    max-width: 80%;
+  }
+}
