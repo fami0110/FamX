@@ -1,15 +1,8 @@
 import { useEffect, useRef, useCallback, useContext, useReducer, useMemo } from "react";
-import { Search, History } from "lucide-react";
+import { Search, History, Globe } from "lucide-react";
 import { getFaviconUrl } from "@/lib/utils";
 import AppContext from "@/AppContext";
 import "@/styles/search.css";
-
-interface Suggestion {
-	text: string;
-	isAI: boolean;
-	url?: string;
-	icon?: React.ReactNode;
-}
 
 import GeminiIcon from "@/assets/ai/gemini.svg?react";
 import ChatGptIcon from "@/assets/ai/chatgpt.svg?react";
@@ -17,6 +10,13 @@ import ZaiIcon from "@/assets/ai/z.svg?react";
 import ClaudeIcon from "@/assets/ai/claude.svg?react";
 import GrokIcon from "@/assets/ai/grok.svg?react";
 import PerplexityIcon from "@/assets/ai/perplexity.svg?react";
+
+interface Suggestion {
+	text: string;
+	isAI: boolean;
+	url?: string;
+	icon?: React.ReactNode;
+}
 
 const aiSuggestions: Suggestion[] = [
 	{
@@ -70,15 +70,18 @@ const aiSuggestions: Suggestion[] = [
 	})
 );
 
-const isQueryLikePrompt = (query: string): boolean => {
-	const trimmedQuery = query.trim();
-	const wordCount = trimmedQuery.split(/\s+/).filter(Boolean).length;
-	const charCount = trimmedQuery.length;
-
-	return wordCount > 2 && charCount > 15;
+const searchEngineUrls: { [key: string]: string } = {
+	Google: "https://www.google.com/search",
+	Bing: "https://www.bing.com/search",
+	DuckDuckGo: "https://duckduckgo.com/",
+	Yahoo: "https://search.yahoo.com/search",
+	Brave: "https://search.brave.com/search",
+	Ecosia: "https://www.ecosia.org/search",
 };
 
-// --- Reducer ---
+
+// Reducer Interfaces & Default Values
+
 interface State {
 	query: string;
 	isFocused: boolean;
@@ -106,7 +109,7 @@ const initialState: State = {
 	alert: { show: false, message: "" },
 };
 
-// Helper Functions: Copy To Clipboard
+// Helper Functions
 async function copyToClipboard(text: string, dispatch: React.Dispatch<Action>) {
 	try {
 		await navigator.clipboard.writeText(text);
@@ -117,7 +120,21 @@ async function copyToClipboard(text: string, dispatch: React.Dispatch<Action>) {
 	}
 }
 
+const isQueryLikePrompt = (query: string): boolean => {
+	const trimmedQuery = query.trim();
+	const wordCount = trimmedQuery.split(/\s+/).filter(Boolean).length;
+	const charCount = trimmedQuery.length;
+
+	return wordCount > 2 && charCount > 15;
+};
+
+const isValidUrl = (str: string) => {
+  const pattern = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,11}([/?#].*)?$/i;
+  return pattern.test(str);
+};
+
 // Suggestion Item Components
+
 interface SuggestionItemProps {
 	suggestion: Suggestion;
 	index: number;
@@ -196,6 +213,9 @@ function SuggestionItem({ suggestion, index, selectedIndex, onClick, query }: Su
 	);
 }
 
+
+// Search Bar Main Component
+
 export default function SearchBar() {
 	const { searchEngine, openWhenStart } = useContext(AppContext);
 
@@ -231,20 +251,30 @@ export default function SearchBar() {
 	const suggestionsRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 
+	const getAutocompleteSuggestionText = useCallback(
+		(suggestions: Suggestion[], selectedSuggestionIndex: number) => {
+			const startIndex = (selectedSuggestionIndex >= 0) ? selectedSuggestionIndex : 0;
+			
+			for (let i = startIndex; i < suggestions.length; i++) {
+				const s = suggestions[i];
+				if (!s.url && !s.isAI && s.text !== "Search AI") 
+					return s.text;
+			}
+
+			return null;
+		}, []
+	);
+
 	const searchQuery = useCallback(
 		(queryString: string) => {
-			const searchEngineUrls: { [key: string]: string } = {
-				Google: "https://www.google.com/search",
-				Bing: "https://www.bing.com/search",
-				DuckDuckGo: "https://duckduckgo.com/",
-				Yahoo: "https://search.yahoo.com/search",
-				Brave: "https://search.brave.com/search",
-				Ecosia: "https://www.ecosia.org/search",
-			};
+			const q = queryString.trim();
 
-			if (queryString.trim()) {
+			if (isValidUrl(q)) {
+				const url = q.includes('://') ? q : `https://${q}`;
+				window.open(url, "_self");
+			} else {
 				const baseUrl = searchEngineUrls[searchEngine] || searchEngineUrls["Google"];
-				window.open(`${baseUrl}?q=${encodeURIComponent(queryString.trim())}`, "_self");
+				window.open(`${baseUrl}?q=${encodeURIComponent(q)}`, "_self");
 			}
 		},
 		[searchEngine]
@@ -324,10 +354,9 @@ export default function SearchBar() {
 				e.preventDefault();
 				handleSuggestion(suggestions[selectedSuggestionIndex]);
 			} else if (e.key === "Tab") {
-				const filteredSuggestions = suggestions.filter(s => !(s.url && !s.isAI) && s.text !== "Search AI");
-				const selected = filteredSuggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0];
-				if (!selected.isAI) {
-					dispatch({ type: "SET_QUERY", payload: selected.text });
+				const text = getAutocompleteSuggestionText(suggestions, selectedSuggestionIndex);
+				if (text) {
+					dispatch({ type: "SET_QUERY", payload: text });
 					dispatch({ type: "SET_SELECTED_SUGGESTION_INDEX", payload: -1 });
 				}
 			}
@@ -351,7 +380,7 @@ export default function SearchBar() {
 
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [isFocused, suggestions, selectedSuggestionIndex, query, handleSuggestion]);
+	}, [isFocused, suggestions, selectedSuggestionIndex, query, handleSuggestion, getAutocompleteSuggestionText]);
 
 	useEffect(() => {
 		if (!query.trim()) {
@@ -433,11 +462,10 @@ export default function SearchBar() {
 	}, [query]);
 
 	const placeholderText = useMemo(() => {
-		const filteredSuggestions = suggestions.filter(s => !(s.url && !s.isAI) && s.text !== "Search AI");
-		const text = filteredSuggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0]?.text;
+		const text = getAutocompleteSuggestionText(suggestions, selectedSuggestionIndex);
 
 		return text?.startsWith(query) ? text : "";
-	}, [suggestions, selectedSuggestionIndex, query]);
+	}, [suggestions, selectedSuggestionIndex, query, getAutocompleteSuggestionText]);
 
 	return (
 		<>
@@ -454,7 +482,10 @@ export default function SearchBar() {
 					<div className={`relative flex items-center gap-3 px-4 py-3 bg-card border rounded-lg transition-all duration-200
 						${isFocused ? "border-accent/50 shadow-2xl shadow-accent/20" : "group-hover:border-accent/50"}`}>
             
-						<Search className="w-5 h-5 text-muted-foreground shrink-0" />
+						{isValidUrl(query) ? 
+							<Globe className="w-5 h-5 text-primary shrink-0" /> :
+							<Search className="w-5 h-5 text-muted-foreground shrink-0" /> 
+						}
 
 						<div className="absolute left-12 text-lg text-muted-foreground/60 pointer-events-none select-none whitespace-nowrap overflow-hidden text-ellipsis w-[82%]">
 							{placeholderText}
@@ -467,7 +498,10 @@ export default function SearchBar() {
 							onChange={(e) => dispatch({ type: "SET_QUERY", payload: e.target.value })}
 							onFocus={() => dispatch({ type: "SET_IS_FOCUSED", payload: true })}
 							placeholder="Search the web..."
-							className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-lg"
+							className={
+								`flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-lg 
+								${isValidUrl(query) ? "text-primary" : "text-foreground"}`
+							}
 							tabIndex={isFocused ? 0 : -1}
 						/>
 
